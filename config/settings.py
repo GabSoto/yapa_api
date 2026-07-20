@@ -137,6 +137,8 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'EXCEPTION_HANDLER': 'core.excepciones.manejador_excepciones',
+    # Decimales como números JSON (15.00 -> 15.0), no como cadenas
+    'COERCE_DECIMAL_TO_STRING': False,
 }
 
 # --- JWT (RF-AUT-004: rotación y lista negra de refresh tokens) ---

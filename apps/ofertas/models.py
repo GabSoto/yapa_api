@@ -43,7 +43,11 @@ class Oferta(models.Model):
 
     def calcular_precio_final(self):
         """Precio final calculado al momento de servir el producto (no se persiste)."""
+        from decimal import ROUND_HALF_UP, Decimal
+
         precio = self.producto.precio
         if self.tipo_descuento == self.TipoDescuento.PORCENTAJE:
-            return precio - (precio * self.valor_descuento / 100)
-        return precio - self.valor_descuento
+            final = precio - (precio * self.valor_descuento / 100)
+        else:
+            final = precio - self.valor_descuento
+        return final.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
