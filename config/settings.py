@@ -193,7 +193,13 @@ SPECTACULAR_SETTINGS = {
 }
 
 # --- CORS ---
-CORS_ALLOWED_ORIGINS = lista_env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+_origenes = lista_env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+if '*' in _origenes:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOWED_ORIGINS = []
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = _origenes
 
 
 # --- Internacionalización ---
