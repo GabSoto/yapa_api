@@ -100,7 +100,7 @@ if os.environ.get('DB_ENGINE') == 'postgresql':
     }
     # En producción con Vercel, confiar en headers HTTPS del proxy
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True'
+    SECURE_SSL_REDIRECT = False
 else:
     DATABASES = {
         'default': {
