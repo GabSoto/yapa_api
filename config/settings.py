@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -95,8 +96,12 @@ if os.environ.get('DB_ENGINE') == 'postgresql':
             'PASSWORD': os.environ.get('DB_PASSWORD', ''),
             'HOST': os.environ.get('DB_HOST', ''),
             'PORT': os.environ.get('DB_PORT', '5432'),
+            'CONN_MAX_AGE': 0,
         }
     }
+    # En producción con Vercel, confiar en headers HTTPS del proxy
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True'
 else:
     DATABASES = {
         'default': {
@@ -150,12 +155,41 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+def hook_excluir_rutas_duplicadas(endpoints):
+    """Excluye del esquema OpenAPI las variantes duplicadas con slash final."""
+    return [
+        endpoint
+        for endpoint in endpoints
+        if not (
+            endpoint[0].endswith('/auth/login/')
+            or endpoint[0].endswith('/auth/register/')
+        )
+    ]
+
+
 # --- Documentación de la API (RNF-MAN-002) ---
 SPECTACULAR_SETTINGS = {
     'TITLE': 'YAPA API',
     'DESCRIPTION': 'API REST de YAPA: reducción del desperdicio de alimentos mediante reservas de excedentes.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'PREPROCESSING_HOOKS': ['config.settings.hook_excluir_rutas_duplicadas'],
+    'ENUM_NAME_OVERRIDES': {
+        'EstadoUsuario': 'apps.usuarios.models.Usuario.Estado',
+        'EstadoProductoEnum': 'apps.productos.models.Producto.Estado',
+        'EstadoReserva': 'apps.reservas.models.Reserva.Estado',
+        'EstadoComercio': 'apps.comercios.models.Comercio.Estado',
+    },
+    'TAGS': [
+        {'name': 'Autenticación', 'description': 'Operaciones de inicio de sesión, registro y gestión de tokens.'},
+        {'name': 'Usuarios', 'description': 'Gestión de perfiles y administración de cuentas de usuarios.'},
+        {'name': 'Comercios', 'description': 'Administración de comercios por parte del administrador.'},
+        {'name': 'Categorías', 'description': 'Categorías de productos disponibles en el catálogo.'},
+        {'name': 'Productos', 'description': 'Catálogo público de productos y gestión para vendedores y administradores.'},
+        {'name': 'Ofertas', 'description': 'Descuentos y ofertas aplicados a productos individuales.'},
+        {'name': 'Carrito', 'description': 'Carrito de compras multi-comercio con reserva inmediata de stock.'},
+        {'name': 'Reservas', 'description': 'Reservas de productos, confirmación por el vendedor y cancelación.'},
+    ],
 }
 
 # --- CORS ---
@@ -172,6 +206,14 @@ USE_TZ = True
 # --- Archivos estáticos y media (fallback local de imágenes en desarrollo) ---
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 

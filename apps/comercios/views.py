@@ -5,14 +5,20 @@ from django.shortcuts import get_object_or_404
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 
+from drf_spectacular.utils import extend_schema, extend_schema_view
+
 from core.permisos import EsAdministrador
 from core.respuestas import respuesta_exito
-from core.serializers import CambiarEstadoSerializer
+from core.serializers import CambiarEstadoSerializer, ErrorDetailSerializer, ErrorValidationSerializer
 
 from .models import Comercio
 from .serializers import ComercioAdminSerializer
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: ComercioAdminSerializer(many=True), 403: ErrorDetailSerializer}),
+)
+@extend_schema(tags=['Comercios'])
 class ListaComerciosView(ListAPIView):
     """RF-COM-001: GET /api/v1/admin/comercios/ (filtro: estado)."""
 
@@ -22,10 +28,23 @@ class ListaComerciosView(ListAPIView):
     filterset_fields = ['estado']
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        request=CambiarEstadoSerializer,
+        responses={
+            200: None,
+            400: ErrorValidationSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        },
+    ),
+)
+@extend_schema(tags=['Comercios'])
 class CambiarEstadoComercioView(APIView):
     """RF-COM-002: PATCH /api/v1/admin/comercios/{id}/estado/"""
 
     permission_classes = [EsAdministrador]
+    serializer_class = CambiarEstadoSerializer
 
     def patch(self, request, pk):
         comercio = get_object_or_404(Comercio, pk=pk)

@@ -9,11 +9,15 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from drf_spectacular.utils import extend_schema, extend_schema_view
+
 from core.jwt import TokenConRolSerializer
 from core.permisos import EsAdministrador
+from core.serializers import ErrorDetailSerializer, ErrorValidationSerializer
 
 from .serializers import (
     LoginSerializer,
+    LogoutSerializer,
     RegistroClienteSerializer,
     RegistroVendedorSerializer,
 )
@@ -44,10 +48,21 @@ def _datos_user(usuario):
     }
 
 
+@extend_schema_view(
+    post=extend_schema(
+        responses={
+            200: LoginSerializer,
+            400: ErrorValidationSerializer,
+            401: ErrorDetailSerializer,
+        }
+    ),
+)
+@extend_schema(tags=['Autenticación'])
 class LoginView(APIView):
     """RF-AUT-001: POST /api/v1/auth/login"""
 
     permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={'request': request})
@@ -60,10 +75,21 @@ class LoginView(APIView):
         )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        responses={
+            201: RegistroClienteSerializer,
+            400: ErrorValidationSerializer,
+            409: ErrorDetailSerializer,
+        }
+    ),
+)
+@extend_schema(tags=['Autenticación'])
 class RegistroClienteView(APIView):
     """RF-AUT-002: POST /api/v1/auth/register"""
 
     permission_classes = [AllowAny]
+    serializer_class = RegistroClienteSerializer
 
     def post(self, request):
         serializer = RegistroClienteSerializer(data=request.data)
@@ -84,10 +110,22 @@ class RegistroClienteView(APIView):
         )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        responses={
+            201: RegistroVendedorSerializer,
+            400: ErrorValidationSerializer,
+            403: ErrorDetailSerializer,
+            409: ErrorDetailSerializer,
+        }
+    ),
+)
+@extend_schema(tags=['Autenticación'])
 class RegistroVendedorView(APIView):
     """RF-AUT-003: POST /api/v1/admin/vendedores/ (solo Administrador)."""
 
     permission_classes = [EsAdministrador]
+    serializer_class = RegistroVendedorSerializer
 
     def post(self, request):
         serializer = RegistroVendedorSerializer(data=request.data)
@@ -124,6 +162,15 @@ class RegistroVendedorView(APIView):
         )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        responses={
+            200: None,
+            401: ErrorDetailSerializer,
+        }
+    ),
+)
+@extend_schema(tags=['Autenticación'])
 class RenovacionTokenView(TokenRefreshView):
     """RF-AUT-004: POST /api/v1/auth/refresh/ (mensajes de error en español)."""
 
@@ -137,20 +184,27 @@ class RenovacionTokenView(TokenRefreshView):
             )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        responses={
+            200: ErrorDetailSerializer,
+            400: ErrorValidationSerializer,
+            401: ErrorDetailSerializer,
+        }
+    ),
+)
+@extend_schema(tags=['Autenticación'])
 class LogoutView(APIView):
     """RF-AUT-005: POST /api/v1/auth/logout/ (invalida el refresh token)."""
 
     permission_classes = [IsAuthenticated]
+    serializer_class = LogoutSerializer
 
     def post(self, request):
-        refresh = request.data.get('refresh')
-        if not refresh:
-            return Response(
-                {'detail': 'El campo refresh es obligatorio.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         try:
-            RefreshToken(refresh).blacklist()
+            RefreshToken(serializer.validated_data['refresh']).blacklist()
         except TokenError:
             return Response(
                 {'detail': 'El token es inválido, ya expiró o ya fue utilizado.'},

@@ -14,6 +14,8 @@ from apps.productos.models import Producto
 from core.paginacion import PaginacionEstandar
 from core.permisos import EsCliente, EsVendedor
 from core.respuestas import respuesta_exito
+from core.serializers import EmptySerializer, ErrorDetailSerializer, ErrorValidationSerializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 
 from .models import Reserva, ReservaItem
 from .serializers import ConfirmarReservaSerializer, ReservaSerializer
@@ -25,10 +27,31 @@ def _queryset_reservas():
     ).prefetch_related('items__producto__oferta')
 
 
+@extend_schema(tags=['Reservas'])
+@extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: ReservaSerializer(many=True),
+            401: ErrorDetailSerializer,
+            403: ErrorDetailSerializer,
+        },
+        parameters=[OpenApiParameter('estado', str)],
+    ),
+    post=extend_schema(
+        request=None,
+        responses={
+            201: ReservaSerializer(many=True),
+            400: ErrorValidationSerializer,
+            401: ErrorDetailSerializer,
+            403: ErrorDetailSerializer,
+        },
+    ),
+)
 class ReservasView(APIView):
     """RF-RES-001 (POST) y RF-RES-002 (GET, filtro opcional por estado)."""
 
     permission_classes = [EsCliente]
+    serializer_class = ReservaSerializer
 
     def get(self, request):
         queryset = _queryset_reservas().filter(cliente=request.user.cliente)
@@ -90,6 +113,10 @@ class ReservasView(APIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: ReservaSerializer(many=True), 403: ErrorDetailSerializer}),
+)
+@extend_schema(tags=['Reservas'])
 class ReservasVendedorView(ListAPIView):
     """RF-RES-003: GET /api/v1/vendedor/reservas/ (Vendedor)."""
 
@@ -97,13 +124,28 @@ class ReservasVendedorView(ListAPIView):
     serializer_class = ReservaSerializer
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Reserva.objects.none()
         return _queryset_reservas().filter(comercio=self.request.user.comercio)
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        request=ConfirmarReservaSerializer,
+        responses={
+            200: None,
+            400: ErrorValidationSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        },
+    ),
+)
+@extend_schema(tags=['Reservas'])
 class EstadoReservaVendedorView(APIView):
     """RF-RES-004: PATCH /api/v1/vendedor/reservas/{id}/estado/ (Confirmar)."""
 
     permission_classes = [EsVendedor]
+    serializer_class = ConfirmarReservaSerializer
 
     def patch(self, request, pk):
         reserva = get_object_or_404(Reserva, pk=pk)
@@ -125,10 +167,24 @@ class EstadoReservaVendedorView(APIView):
         )
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        request=None,
+        responses={
+            200: None,
+            400: ErrorValidationSerializer,
+            401: ErrorDetailSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        },
+    ),
+)
+@extend_schema(tags=['Reservas'])
 class CancelarReservaView(APIView):
     """RF-RES-005: PATCH /api/v1/reservas/{id}/cancelar/ (Cliente o Vendedor)."""
 
     permission_classes = [IsAuthenticated]
+    serializer_class = EmptySerializer
 
     def patch(self, request, pk):
         reserva = get_object_or_404(Reserva, pk=pk)

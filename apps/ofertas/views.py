@@ -6,16 +6,42 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.productos.models import Producto
+from drf_spectacular.utils import extend_schema, extend_schema_view
+
 from core.permisos import EsVendedor
 from core.respuestas import respuesta_exito
+from core.serializers import ErrorDetailSerializer, ErrorValidationSerializer
 
 from .serializers import OfertaSerializer
 
 
+@extend_schema(tags=['Ofertas'])
+@extend_schema_view(
+    post=extend_schema(
+        request=OfertaSerializer,
+        responses={
+            201: OfertaSerializer,
+            400: ErrorValidationSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+            409: ErrorDetailSerializer,
+        },
+    ),
+    patch=extend_schema(
+        request=OfertaSerializer,
+        responses={
+            200: OfertaSerializer,
+            400: ErrorValidationSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        },
+    ),
+)
 class OfertaView(APIView):
     """RF-DES-001: POST y PATCH /api/v1/productos/{producto_id}/oferta/"""
 
     permission_classes = [EsVendedor]
+    serializer_class = OfertaSerializer
 
     def _producto_propio(self, request, producto_id):
         producto = get_object_or_404(Producto, pk=producto_id)

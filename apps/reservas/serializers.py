@@ -1,5 +1,7 @@
 """Serializers del módulo de reservas."""
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.carrito.serializers import ProductoCarritoSerializer
@@ -17,7 +19,7 @@ class ReservaItemSerializer(serializers.ModelSerializer):
         model = ReservaItem
         fields = ['id', 'producto', 'cantidad', 'precio_unitario', 'subtotal']
 
-    def get_subtotal(self, obj):
+    def get_subtotal(self, obj) -> float:
         return obj.precio_unitario * obj.cantidad
 
 
@@ -52,7 +54,7 @@ class ReservaSerializer(serializers.ModelSerializer):
             'total',
         ]
 
-    def get_total(self, obj):
+    def get_total(self, obj) -> Decimal:
         return sum(item.precio_unitario * item.cantidad for item in obj.items.all())
 
 

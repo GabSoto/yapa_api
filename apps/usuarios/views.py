@@ -8,7 +8,8 @@ from rest_framework.views import APIView
 
 from core.permisos import EsAdministrador
 from core.respuestas import respuesta_exito
-from core.serializers import CambiarEstadoSerializer
+from core.serializers import CambiarEstadoSerializer, ErrorDetailSerializer, ErrorValidationSerializer
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from .models import Usuario
 from .serializers import (
@@ -18,10 +19,25 @@ from .serializers import (
 )
 
 
+@extend_schema(tags=['Usuarios'])
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: PerfilUsuarioSerializer, 401: ErrorDetailSerializer}
+    ),
+    put=extend_schema(
+        request=ActualizarPerfilSerializer,
+        responses={200: PerfilUsuarioSerializer, 400: ErrorValidationSerializer, 401: ErrorDetailSerializer},
+    ),
+    patch=extend_schema(
+        request=ActualizarPerfilSerializer,
+        responses={200: PerfilUsuarioSerializer, 400: ErrorValidationSerializer, 401: ErrorDetailSerializer},
+    ),
+)
 class PerfilView(APIView):
     """RF-USU-001 / RF-USU-002: GET, PUT y PATCH /api/v1/usuarios/perfil/"""
 
     permission_classes = [IsAuthenticated]
+    serializer_class = PerfilUsuarioSerializer
 
     def get(self, request):
         return respuesta_exito(data=PerfilUsuarioSerializer(request.user).data)
@@ -44,6 +60,10 @@ class PerfilView(APIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: UsuarioAdminSerializer(many=True), 403: ErrorDetailSerializer}),
+)
+@extend_schema(tags=['Usuarios'])
 class ListaUsuariosView(ListAPIView):
     """RF-USU-003: GET /api/v1/admin/usuarios/ (filtros: rol, estado)."""
 
@@ -53,10 +73,18 @@ class ListaUsuariosView(ListAPIView):
     filterset_fields = ['rol', 'estado']
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        request=CambiarEstadoSerializer,
+        responses={200: None, 400: ErrorValidationSerializer, 403: ErrorDetailSerializer, 404: ErrorDetailSerializer},
+    ),
+)
+@extend_schema(tags=['Usuarios'])
 class CambiarEstadoUsuarioView(APIView):
     """RF-USU-004: PATCH /api/v1/admin/usuarios/{id}/estado/"""
 
     permission_classes = [EsAdministrador]
+    serializer_class = CambiarEstadoSerializer
 
     def patch(self, request, pk):
         usuario = get_object_or_404(Usuario, pk=pk)

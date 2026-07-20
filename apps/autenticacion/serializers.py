@@ -20,6 +20,12 @@ validador_telefono = RegexValidator(
 )
 
 
+class LogoutSerializer(serializers.Serializer):
+    """RF-AUT-005: refresh token a invalidar."""
+
+    refresh = serializers.CharField()
+
+
 class LoginSerializer(serializers.Serializer):
     """RF-AUT-001: autenticación por email y contraseña."""
 

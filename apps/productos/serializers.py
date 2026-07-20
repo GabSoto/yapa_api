@@ -1,5 +1,7 @@
 """Serializers del módulo de productos."""
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.categorias.models import Categoria
@@ -60,11 +62,11 @@ class ProductoPublicoSerializer(serializers.ModelSerializer):
         oferta = getattr(obj, 'oferta', None)
         return oferta if oferta and oferta.esta_vigente() else None
 
-    def get_oferta(self, obj):
+    def get_oferta(self, obj) -> dict | None:
         oferta = self._oferta_vigente(obj)
         return OfertaResumenSerializer(oferta).data if oferta else None
 
-    def get_precio_final(self, obj):
+    def get_precio_final(self, obj) -> Decimal:
         oferta = self._oferta_vigente(obj)
         return oferta.calcular_precio_final() if oferta else obj.precio
 

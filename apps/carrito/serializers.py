@@ -22,7 +22,7 @@ class ProductoCarritoSerializer(serializers.ModelSerializer):
         model = Producto
         fields = ['id', 'nombre', 'imagen', 'precio', 'precio_final']
 
-    def get_precio_final(self, obj):
+    def get_precio_final(self, obj) -> float:
         return precio_vigente(obj)
 
 
@@ -34,8 +34,30 @@ class ItemCarritoSerializer(serializers.ModelSerializer):
         model = CarritoItem
         fields = ['id', 'producto', 'cantidad', 'subtotal']
 
-    def get_subtotal(self, obj):
+    def get_subtotal(self, obj) -> float:
         return precio_vigente(obj.producto) * obj.cantidad
+
+
+# --- Serializers de la representación del carrito (para documentación OpenAPI) ---
+
+
+class ComercioCarritoSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    nombre_comercio = serializers.CharField()
+
+
+class GrupoComercioSerializer(serializers.Serializer):
+    comercio = ComercioCarritoSerializer()
+    items = ItemCarritoSerializer(many=True)
+    subtotal_comercio = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class CarritoRepresentacionSerializer(serializers.Serializer):
+    """Estructura de respuesta del carrito agrupado por comercio."""
+
+    id = serializers.IntegerField()
+    comercios = GrupoComercioSerializer(many=True)
+    total = serializers.DecimalField(max_digits=12, decimal_places=2)
 
 
 class AgregarItemSerializer(serializers.Serializer):

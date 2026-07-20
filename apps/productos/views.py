@@ -12,7 +12,9 @@ from rest_framework.views import APIView
 from core.paginacion import PaginacionEstandar
 from core.permisos import EsAdministrador, EsVendedor
 from core.respuestas import respuesta_exito
+from core.serializers import ErrorDetailSerializer, ErrorValidationSerializer
 from core.storage import eliminar_imagen, subir_imagen
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 
 from .models import Producto
 from .serializers import (
@@ -75,8 +77,29 @@ class ProductoPublicoFilter(django_filters.FilterSet):
         return queryset.filter(vigente) if value else queryset.exclude(vigente)
 
 
+@extend_schema(tags=['Productos'])
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: ProductoPublicoSerializer(many=True)},
+        parameters=[
+            OpenApiParameter('categoria_id', int),
+            OpenApiParameter('comercio_id', int),
+            OpenApiParameter('con_oferta', bool),
+        ],
+    ),
+    post=extend_schema(
+        request=ProductoEscrituraSerializer,
+        responses={
+            201: ProductoVendedorSerializer,
+            400: ErrorValidationSerializer,
+            403: ErrorDetailSerializer,
+        },
+    ),
+)
 class ProductosView(APIView):
     """RF-PRO-001 (GET, público) y RF-PRO-004 (POST, vendedor)."""
+
+    serializer_class = ProductoPublicoSerializer
 
     def get_permissions(self):
         if self.request.method == 'POST':
@@ -103,8 +126,32 @@ class ProductosView(APIView):
         )
 
 
+@extend_schema(tags=['Productos'])
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: ProductoPublicoSerializer, 404: ErrorDetailSerializer}
+    ),
+    patch=extend_schema(
+        request=ProductoEscrituraSerializer,
+        responses={
+            200: ProductoVendedorSerializer,
+            400: ErrorValidationSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        },
+    ),
+    delete=extend_schema(
+        responses={
+            200: None,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        }
+    ),
+)
 class ProductoDetalleView(APIView):
     """RF-PRO-002 (GET, público) y RF-PRO-005/006 (PATCH/DELETE, vendedor)."""
+
+    serializer_class = ProductoPublicoSerializer
 
     def get_permissions(self):
         if self.request.method in ('PATCH', 'PUT', 'DELETE'):
@@ -133,6 +180,12 @@ class ProductoDetalleView(APIView):
         return respuesta_exito(message='Producto desactivado correctamente.')
 
 
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: ProductoVendedorSerializer(many=True), 403: ErrorDetailSerializer}
+    ),
+)
+@extend_schema(tags=['Productos'])
 class MisProductosView(ListAPIView):
     """RF-PRO-003: GET /api/v1/productos/mis-productos/ (Vendedor)."""
 
@@ -140,6 +193,8 @@ class MisProductosView(ListAPIView):
     serializer_class = ProductoVendedorSerializer
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Producto.objects.none()
         return (
             Producto.objects.select_related('categoria', 'oferta')
             .filter(comercio=self.request.user.comercio)
@@ -147,6 +202,12 @@ class MisProductosView(ListAPIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: ProductoAdminSerializer(many=True), 403: ErrorDetailSerializer}
+    ),
+)
+@extend_schema(tags=['Productos'])
 class ListaProductosAdminView(ListAPIView):
     """RF-PRO-007: GET /api/v1/admin/productos/ (Administrador)."""
 
@@ -158,10 +219,23 @@ class ListaProductosAdminView(ListAPIView):
         return Producto.objects.select_related('comercio', 'categoria').all().order_by('id')
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        request=EstadoProductoSerializer,
+        responses={
+            200: None,
+            400: ErrorValidationSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        },
+    ),
+)
+@extend_schema(tags=['Productos'])
 class CambiarEstadoProductoAdminView(APIView):
     """RF-PRO-007: PATCH /api/v1/admin/productos/{id}/estado/ (moderación)."""
 
     permission_classes = [EsAdministrador]
+    serializer_class = EstadoProductoSerializer
 
     def patch(self, request, pk):
         producto = get_object_or_404(Producto, pk=pk)

@@ -15,11 +15,14 @@ from rest_framework.views import APIView
 
 from apps.productos.models import Producto
 from core.permisos import EsCliente
+from core.serializers import ErrorDetailSerializer, ErrorValidationSerializer
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from .models import Carrito, CarritoItem
 from .serializers import (
     ActualizarItemSerializer,
     AgregarItemSerializer,
+    CarritoRepresentacionSerializer,
     ItemCarritoSerializer,
 )
 
@@ -62,20 +65,41 @@ def _representacion_carrito(carrito):
     return {'id': carrito.id, 'comercios': comercios, 'total': total}
 
 
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: CarritoRepresentacionSerializer, 401: ErrorDetailSerializer, 403: ErrorDetailSerializer}
+    ),
+)
+@extend_schema(tags=['Carrito'])
 class CarritoView(APIView):
     """GET /api/v1/carrito/ — carrito activo del cliente."""
 
     permission_classes = [EsCliente]
+    serializer_class = CarritoRepresentacionSerializer
 
     def get(self, request):
         carrito, _ = Carrito.objects.get_or_create(cliente=_cliente(request))
         return Response(_representacion_carrito(carrito))
 
 
+@extend_schema_view(
+    post=extend_schema(
+        request=AgregarItemSerializer,
+        responses={
+            201: CarritoRepresentacionSerializer,
+            400: ErrorValidationSerializer,
+            401: ErrorDetailSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        },
+    ),
+)
+@extend_schema(tags=['Carrito'])
 class CarritoItemsView(APIView):
     """POST /api/v1/carrito/items/ — agregar producto (reserva stock al instante)."""
 
     permission_classes = [EsCliente]
+    serializer_class = AgregarItemSerializer
 
     def post(self, request):
         serializer = AgregarItemSerializer(data=request.data)
@@ -114,10 +138,32 @@ class CarritoItemsView(APIView):
         )
 
 
+@extend_schema(tags=['Carrito'])
+@extend_schema_view(
+    patch=extend_schema(
+        request=ActualizarItemSerializer,
+        responses={
+            200: CarritoRepresentacionSerializer,
+            400: ErrorValidationSerializer,
+            401: ErrorDetailSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        },
+    ),
+    delete=extend_schema(
+        responses={
+            200: CarritoRepresentacionSerializer,
+            401: ErrorDetailSerializer,
+            403: ErrorDetailSerializer,
+            404: ErrorDetailSerializer,
+        }
+    ),
+)
 class CarritoItemDetalleView(APIView):
     """PATCH y DELETE /api/v1/carrito/items/{id}/ — solo ítems propios."""
 
     permission_classes = [EsCliente]
+    serializer_class = ActualizarItemSerializer
 
     def _item_propio(self, request, pk):
         return get_object_or_404(
