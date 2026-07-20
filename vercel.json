@@ -19,10 +19,4 @@
       "dest": "config/wsgi.py"
     }
   ],
-  "functions": {
-    "config/wsgi.py": {
-      "memory": 256,
-      "maxDuration": 30
-    }
-  }
 }
