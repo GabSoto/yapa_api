@@ -25,8 +25,7 @@ def lista_env(nombre, por_defecto=''):
 # --- Seguridad ---
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = lista_env('ALLOWED_HOSTS', '127.0.0.1,localhost,.vercel.app')
-
+ALLOWED_HOSTS = lista_env('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost']).split(',')
 
 # --- Aplicaciones ---
 INSTALLED_APPS = [
