@@ -1,4 +1,4 @@
-annotated-types==0.7.0
+﻿annotated-types==0.7.0
 anyio==4.14.2
 asgiref==3.12.1
 attrs==26.1.0
@@ -50,4 +50,4 @@ tzdata==2026.3
 uritemplate==4.2.0
 websockets==15.0.1
 yarl==1.24.5
-whitenoise==6.9.0
+whitenoise==6.12.0
