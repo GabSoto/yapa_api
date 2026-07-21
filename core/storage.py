@@ -37,7 +37,7 @@ def subir_imagen(archivo):
 
 
 def eliminar_imagen(url):
-    """Elimina la imagen anterior al reemplazarla. Falla silenciosamente."""
+    """Elimina la imagen anterior al reemplazarla."""
     if not url:
         return
     try:
